@@ -1,0 +1,8 @@
+&FLAGS
+
+LSORBIT = .TRUE.
+ISORT = .TRUE.
+ATOMARRAY = 1
+INPUT = PROCAR
+OUTPUT = fort.test
+/
