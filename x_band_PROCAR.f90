@@ -4,15 +4,15 @@
 	Implicit None
 
 	integer*8 :: ikpt, i, j, n, ispin, iorb, iband, bandi, iatom, nat, l
-	integer*8 :: Nbands, Nkpt
-	integer*8 :: Natoms, AtomArray(100)
+	integer*8 :: Nbands, Nkpt, count_max
+	integer*8 :: Natoms
 	integer*8, allocatable :: iband_sort(:,:)
-	!integer*8, allocatable :: AtomArray(:)
+	integer*8, allocatable :: AtomArray(:)
 	real*8 :: dummy, SurfChar, Chari, rec_vec(3,3), k_car(3), k_car_prev(3), scal, real_vec(3,3)
 	real*8 :: dist, kpt(3)
 	
 
-	CHARACTER(LEN=80) :: TXT, input, filetype, output
+	CHARACTER(LEN=80) :: TXT, input, filetype, output, vaspversion
 	real*8, allocatable :: SquaredAmplitude(:,:), kdist(:), eval(:,:)
 	real*8, allocatable :: OrbArray(:),tot(:,:), m(:,:,:)
 	real*8, allocatable :: OrbChar(:,:,:)
@@ -24,17 +24,24 @@
 	read(13,*)
 	read(13,*) txt, txt, txt, Nkpt, txt, txt, txt, Nbands, txt, txt, txt, Natoms
 	close(13)
-	!allocate(AtomArray(Natoms))
 
 	Namelist/FLAGS/ LSORBIT, &   !SOC flag
-	                ATOMARRAY, & !Array containing atoms
+	                VASPVERSION, & !VASP.x.x.x
 	                INPUT, &
 	                OUTPUT, &
 	                ISORT         ! Option, switch on eigenvalue sorting for hybrid comps
 
+	Namelist/ATARRAY/ ATOMARRAY !Array containing atoms
 	! Read input x_input.dat
 	open( unit=12,file='x_input.dat', status='old', form='formatted' )
 	read( unit=12,nml=FLAGS )
+	close( unit=12 )
+
+	! Allocate and read Atomarray
+	allocate(AtomArray(Natoms))
+	AtomArray = 0.0
+	open( unit=12,file='x_input.dat', status='old', form='formatted' )
+	read( unit=12,nml=ATARRAY )
 	close( unit=12 )
 
 	! Specify the atoms 
@@ -68,7 +75,6 @@
 	 read(10,*)
 	!read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
 	 read(10,'(A18,3f11.8)') txt, (kpt(i), i=1,3) 
-	 write(*,*) kpt(:)
 	 k_car=matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
 	  dist = dist + sqrt( (k_car(1)-k_car_prev(1))**2 + (k_car(2)-k_car_prev(2))**2 + (k_car(3)-k_car_prev(3))**2 )
@@ -102,10 +108,15 @@
 	    end do
  	    read(10,*) txt, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, m(ikpt,iband,l)
 	   end do
+	  !read(10,*)
 	  end if
 	  if (filetype =='PROCAR lm decomposed + phase') then
- 	!   do iatom=1,2*Natoms+1 for VASP.5.4.1
-	   do iatom=1,Natoms+2 ! for VASP.5.4.4
+	   if (vaspversion =='5.4.1') then
+	    count_max = 2*Natoms+1
+	   else if (vaspversion == '5.4.4') then
+	    count_max = Natoms+2
+	   end if
+ 	   do iatom=1,count_max 
 	    read(10,*)
 	   end do
 	  end if
