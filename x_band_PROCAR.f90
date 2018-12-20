@@ -68,11 +68,11 @@
 	 read(10,*)
 	!read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
 	 read(10,'(A18,3f11.8)') txt, (kpt(i), i=1,3) 
-	 write(*,*) kpt(:)
+	!write(*,*) kpt(:)
 	 k_car=matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
 	  dist = dist + sqrt( (k_car(1)-k_car_prev(1))**2 + (k_car(2)-k_car_prev(2))**2 + (k_car(3)-k_car_prev(3))**2 )
-	  write(*,*) "Compute dist"
+	! write(*,*) "Compute dist"
 	 end if
 	!write(*,*) dist, kpt
 	 kdist(ikpt) = dist 
