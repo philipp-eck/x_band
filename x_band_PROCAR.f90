@@ -161,15 +161,13 @@
 	! Write header
 	open(unit=200,file=output)
 	if (LSORBIT ==.TRUE.) then
-	 write(fs,'(A11,i2,A4)') '(A5,A9,A11,',norb+5,'A7)'
-	 write(*,*) fs
-	 write(200,fs)'iband','kdist','eval','mx','my','mz',(trim(header(iorb)),iorb=1,norb-1),'tot','Abs'
+	 write(fs,'(A11,i2,A4)') '(A3,A9,A10,',norb+5,'A7)'
+	 write(200,fs)'i','kdist','eval','mx','my','mz',(trim(header(iorb)),iorb=1,norb-1),'tot','Abs'
 	else
-	 write(200,'(A6,A9,1A12,15A10)') 'iband', 'kdist', 'eval',(header(iorb),iorb=1,norb-1), 'tot','Abs'
+	 write(fs,'(A11,i2,A4)') '(A3,A9,A10,',norb+2,'A7)'
+	 write(200,fs) 'i', 'kdist', 'eval',(trim(header(iorb)),iorb=1,norb-1), 'tot','Abs'
 	end if
 	
-	write(fs,'(A16,i2,A6)') '(i6,f12.5,f15.8,',norb+4,'f10.3)'
-	write(*,*) fs
 	!Write projections
 	do iband=1, Nbands
 	 do ikpt=1, Nkpt
@@ -179,10 +177,10 @@
 	   j = iband
 	  end if
 	  if (LSORBIT ==.TRUE.) then
-	   write(fs,'(A15,i2,A6)') '(i5,f9.5,f11.5,',norb+4,'f7.3)'
+	   write(fs,'(A15,i2,A6)') '(i3,f9.5,f10.5,',norb+4,'f7.3)'
 	   write(200,fs) iband, kdist(ikpt), eval(ikpt,j), (m(ikpt,j,i), i=1,3), (OrbChar(ikpt,j,i), i= 1,norb), tot(ikpt,j)
 	  else
-	   write(fs,'(A15,i2,A6)') '(i5,f9.5,f11.5,',norb+1,'f7.3)'
+	   write(fs,'(A15,i2,A6)') '(i3,f9.5,f10.5,',norb+1,'f7.3)'
 	   write(200,fs) iband, kdist(ikpt), eval(ikpt,j), (OrbChar(ikpt,j,i), i= 1,norb),tot(ikpt,j)
 	  end if
 	 end do
