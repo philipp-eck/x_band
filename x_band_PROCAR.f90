@@ -108,7 +108,7 @@
 	  do iatom=1,Natoms
 	   read(10,*) dummy, (SquaredAmplitude(iatom,iorb), iorb=1,norb)
           end do
-	  do i = 1,10
+	  do i = 1,norb
 	   Chari = 0.d0
 	   do j = 1,SIZE((AtomArray))
 	    if (AtomArray(j) .NE. 0) then
