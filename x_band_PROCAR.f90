@@ -3,39 +3,47 @@
 	! compile with ifort -free -heap-arrays 1 -o extract_char_band.x extract_char_band.f
 	Implicit None
 
-	integer*8 :: ikpt, i, j, n, ispin, iorb, iband, bandi, iatom, nat, l
+	integer*8 :: ikpt, i, j, n, ispin, norb, iorb, iband, bandi, iatom, nat, l
 	integer*8 :: Nbands, Nkpt, count_max
 	integer*8 :: Natoms
 	integer*8, allocatable :: iband_sort(:,:)
-	integer*8, allocatable :: AtomArray(:)
+	integer*8, allocatable :: AtomArray(:), dummyarray(:)
 	real*8 :: dummy, SurfChar, Chari, rec_vec(3,3), k_car(3), k_car_prev(3), scal, real_vec(3,3)
 	real*8 :: dist, kpt(3)
 	
 
-	CHARACTER(LEN=80) :: TXT, input, filetype, output, vaspversion
+	character(len=4), allocatable :: header(:)
+	character(len=80) :: TXT, input, filetype, output, vaspversion, orb 
+	character(len=40) :: fs
 	real*8, allocatable :: SquaredAmplitude(:,:), kdist(:), eval(:,:)
 	real*8, allocatable :: OrbArray(:),tot(:,:), m(:,:,:)
 	real*8, allocatable :: OrbChar(:,:,:)
 	logical :: LSORBIT,ok_flag, ISORT
 	
 
-	! Read Natoms and allocate AtomArray
-	open(unit=13,file='PROCAR', status='old')
-	read(13,*)
-	read(13,*) txt, txt, txt, Nkpt, txt, txt, txt, Nbands, txt, txt, txt, Natoms
-	close(13)
+	allocate(header(16))
+	header = [character(len=65) :: 's','py','pz','px','dxy','dyz','dz2',&
+	      'dxz','dx2','f-3','f-2','f-1','f0','f1','f2','f3']
 
-	Namelist/FLAGS/ LSORBIT, &   !SOC flag
-	                VASPVERSION, & !VASP.x.x.x
-	                INPUT, &
-	                OUTPUT, &
-	                ISORT         ! Option, switch on eigenvalue sorting for hybrid comps
-
-	Namelist/ATARRAY/ ATOMARRAY !Array containing atoms
 	! Read input x_input.dat
 	open( unit=12,file='x_input.dat', status='old', form='formatted' )
 	read( unit=12,nml=FLAGS )
 	close( unit=12 )
+
+	Namelist/FLAGS/ LSORBIT, &   !SOC flag
+	                VASPVERSION, & !VASP.x.x.x
+	                ORB, &         ! "d" or "f" electron system
+	                INPUT, &
+	                OUTPUT, &
+	                ISORT         ! Option, switch on eigenvalue sorting for hybrid comps
+
+	! Read Natoms and allocate AtomArray
+	open(unit=13,file=input, status='old')
+	read(13,*)
+	read(13,*) txt, txt, txt, Nkpt, txt, txt, txt, Nbands, txt, txt, txt, Natoms
+	close(13)
+
+	Namelist/ATARRAY/ ATOMARRAY !Array containing atoms
 
 	! Allocate and read Atomarray
 	allocate(AtomArray(Natoms))
@@ -62,10 +70,18 @@
 	read(10,'(A)') filetype
 	read(10,*) txt, txt, txt, Nkpt, txt, txt, txt, Nbands, txt, txt, txt, Natoms
 	! allocate  arrays
+	if (orb .EQ. "d") then
+	 norb = 10
+	else if (orb .EQ. "f") then
+	 norb = 17
+	else
+	 write(*,*) "Unknown ORB, choose 'd' or 'f'"
+	end if
 	allocate(m(Nkpt,Nbands,3))
-	allocate(SquaredAmplitude(Natoms,10))
+	allocate(SquaredAmplitude(Natoms,norb))
+	allocate(dummyarray(norb-1))
 	allocate(tot(Nkpt,Nbands))
-	allocate(OrbChar(Nkpt,Nbands,10))
+	allocate(OrbChar(Nkpt,Nbands,norb))
 	allocate(kdist(Nkpt))
 	allocate(eval(Nkpt,Nbands))
 	allocate(iband_sort(Nkpt,Nbands))
@@ -74,7 +90,7 @@
 	!write(*,'(A,1i6)') 'Reading k-point: ', ikpt
 	 read(10,*)
 	!read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
-	 read(10,'(A18,3f11.8)') txt, (kpt(i), i=1,3) 
+	 read(10,'(A19,3f11.8)') txt, (kpt(i), i=1,3) 
 	!write(*,*) kpt(:)
 	 k_car=matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
@@ -90,7 +106,7 @@
 	  read(10,*)
 	  read(10,*)
 	  do iatom=1,Natoms
-	   read(10,*) dummy, (SquaredAmplitude(iatom,iorb), iorb=1,10)
+	   read(10,*) dummy, (SquaredAmplitude(iatom,iorb), iorb=1,norb)
           end do
 	  do i = 1,10
 	   Chari = 0.d0
@@ -101,15 +117,20 @@
 	   end do
 	   OrbChar(ikpt,iband,i) = Chari
 	  end do
-	  read(10,*) txt, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, tot(ikpt,iband)
+	  read(10,*) txt, (dummyarray(iorb), iorb=1,norb-1), tot(ikpt,iband)
+	  if (vaspversion =='5.4.1') then
+	   read(10,*)
+	  end if
 	  if (LSORBIT ==.TRUE.) then
 	   do l=1,3
 	    do iatom=1,Natoms
 	     read(10,*)
 	    end do
- 	    read(10,*) txt, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, dummy, m(ikpt,iband,l)
+ 	    read(10,*) txt, (dummyarray(iorb), iorb=1,norb-1), m(ikpt,iband,l)
+	    if (vaspversion =='5.4.1') then
+	     read(10,*)
+	    end if
 	   end do
-	  !read(10,*)
 	  end if
 	  if (filetype =='PROCAR lm decomposed + phase') then
 	   if (vaspversion =='5.4.1') then
@@ -121,6 +142,7 @@
 	    read(10,*)
 	   end do
 	  end if
+	! write(*,*) "finished reading loop"
 	 end do
 	 read(10,*)
 	 k_car_prev(1) = k_car(1)
@@ -139,11 +161,15 @@
 	! Write header
 	open(unit=200,file=output)
 	if (LSORBIT ==.TRUE.) then
-	 write(200,'(A6,A12,1A15,15A10)')'iband','kdist','eval','mx','my','mz','s','py','pz','px','dxy', 'dyz','dz2','dxz','dx2','tot','Abs'
+	 write(fs,'(A11,i2,A4)') '(A5,A9,A11,',norb+5,'A7)'
+	 write(*,*) fs
+	 write(200,fs)'iband','kdist','eval','mx','my','mz',(trim(header(iorb)),iorb=1,norb-1),'tot','Abs'
 	else
-	 write(200,'(A6,A12,1A15,15A10)') 'iband', 'kdist', 'eval', 's', 'py', 'pz', 'px', 'dxy', 'dyz', 'dz2', 'dxz', 'dx2', 'tot','Abs'
+	 write(200,'(A6,A9,1A12,15A10)') 'iband', 'kdist', 'eval',(header(iorb),iorb=1,norb-1), 'tot','Abs'
 	end if
 	
+	write(fs,'(A16,i2,A6)') '(i6,f12.5,f15.8,',norb+4,'f10.3)'
+	write(*,*) fs
 	!Write projections
 	do iband=1, Nbands
 	 do ikpt=1, Nkpt
@@ -153,9 +179,11 @@
 	   j = iband
 	  end if
 	  if (LSORBIT ==.TRUE.) then
-	   write(200,'(i6,f12.5,f15.8,14f10.3)') iband, kdist(ikpt), eval(ikpt,j), (m(ikpt,j,i), i=1,3), (OrbChar(ikpt,j,i), i= 1,10), tot(ikpt,j)
+	   write(fs,'(A15,i2,A6)') '(i5,f9.5,f11.5,',norb+4,'f7.3)'
+	   write(200,fs) iband, kdist(ikpt), eval(ikpt,j), (m(ikpt,j,i), i=1,3), (OrbChar(ikpt,j,i), i= 1,norb), tot(ikpt,j)
 	  else
-           write(200,'(i6,f12.5,f15.8,11f10.3)') iband, kdist(ikpt), eval(ikpt,j), (OrbChar(ikpt,j,i), i= 1,10),tot(ikpt,j)
+	   write(fs,'(A15,i2,A6)') '(i5,f9.5,f11.5,',norb+1,'f7.3)'
+	   write(200,fs) iband, kdist(ikpt), eval(ikpt,j), (OrbChar(ikpt,j,i), i= 1,norb),tot(ikpt,j)
 	  end if
 	 end do
 	 write(200,*)

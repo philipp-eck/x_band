@@ -2,6 +2,7 @@
 
 LSORBIT = .TRUE.
 ISORT = .FALSE.
+ORB = d
 INPUT = PROCAR
 OUTPUT = fort.test
 VASPVERSION = 5.4.4

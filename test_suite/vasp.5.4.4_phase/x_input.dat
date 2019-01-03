@@ -1,0 +1,12 @@
+&FLAGS
+
+LSORBIT = .TRUE.
+ISORT = .FALSE.
+ORB = d
+INPUT = PROCAR_phase_vasp.5.4.4
+OUTPUT = fort.test
+VASPVERSION = 5.4.4
+
+&ATARRAY
+ATOMARRAY = 1
+/
