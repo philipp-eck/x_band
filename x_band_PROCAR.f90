@@ -64,7 +64,8 @@
 	
 	real_vec=scal*real_vec
 	call M33INV(real_vec,rec_vec,ok_flag)
-
+	
+	
 	! Read PROCAR
 	open(unit=10,file=input,status='old')
 	read(10,'(A)') filetype
@@ -90,7 +91,7 @@
 	!write(*,'(A,1i6)') 'Reading k-point: ', ikpt
 	 read(10,*)
 	!read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
-	 read(10,'(A19,3f11.8)') txt, (kpt(i), i=1,3) 
+	 read(10,'(A18,3f11.8)') txt, (kpt(i), i=1,3) 
 	!write(*,*) kpt(:)
 	 k_car=matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
