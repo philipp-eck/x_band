@@ -89,7 +89,7 @@
 	allocate(iband_sort(Nkpt,Nbands))
 	dist = 0.0000000000d0
 	do ikpt=1,Nkpt
-	 write(*,'(A,1i6)') 'Reading k-point: ', ikpt
+	!write(*,'(A,1i6)') 'Reading k-point: ', ikpt
 	 read(10,*)
 	!read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
 	 read(10,'(A18,3f11.8)') txt, (kpt(i), i=1,3) 
@@ -108,7 +108,7 @@
 	 read(10,*)
 	 do iband=1,Nbands
 	  read(10,*) txt, dummy, txt, txt, eval(ikpt,iband)
-	  write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
+	 !write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
 	  read(10,*)
 	  read(10,*)
 	  do iatom=1,Natoms
