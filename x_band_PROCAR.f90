@@ -4,7 +4,7 @@
 	Implicit None
 
 	integer*8 :: ikpt, i, j, n, ispin, norb, iorb, iband, bandi, iatom, nat, l
-	integer*8 :: Nbands, Nkpt, count_max
+	integer*8 :: Nbands, Nkpt, count_max, len_k
 	integer*8 :: Natoms
 	integer*8, allocatable :: iband_sort(:,:)
 	integer*8, allocatable :: AtomArray(:), dummyarray(:)
@@ -12,18 +12,19 @@
 	real*8 :: dist, kpt(3)
 	
 
-	character(len=4), allocatable :: header(:)
+	character(len=8), allocatable :: header(:), header_k(:)
 	character(len=80) :: TXT, input, filetype, output, vaspversion, orb 
-	character(len=40) :: fs
-	real*8, allocatable :: SquaredAmplitude(:,:), kdist(:), eval(:,:)
+	character(len=40) :: fs, k_string, k_float
+	real*8, allocatable :: SquaredAmplitude(:,:), kdist(:,:), eval(:,:)
 	real*8, allocatable :: OrbArray(:),tot(:,:), m(:,:,:)
 	real*8, allocatable :: OrbChar(:,:,:)
-	logical :: LSORBIT,ok_flag, ISORT
+	logical :: LSORBIT,ok_flag, ISORT, RECVEC
 	
 
 	allocate(header(16))
 	header = [character(len=65) :: 's','py','pz','px','dxy','dyz','dz2',&
 	      'dxz','dx2','f-3','f-2','f-1','f0','f1','f2','f3']
+	header_K = [character(len=65) :: 'k-dist', 'k_x', 'k_y', 'k_z']
 
 	! Read input x_input.dat
 	open( unit=12,file='x_input.dat', status='old', form='formatted' )
@@ -35,7 +36,8 @@
 	                ORB, &         ! "d" or "f" electron system
 	                INPUT, &
 	                OUTPUT, &
-	                ISORT         ! Option, switch on eigenvalue sorting for hybrid comps
+	                ISORT, &         ! Option, switch on eigenvalue sorting for hybrid comps
+	                RECVEC           ! write reciprocal vectors in cartesian coordinates to output
 
 	! Read Natoms and allocate AtomArray
 	open(unit=13,file=input, status='old')
@@ -64,8 +66,7 @@
 	
 	real_vec=scal*real_vec
 	call M33INV(real_vec,rec_vec,ok_flag)
-	
-	
+
 	! Read PROCAR
 	open(unit=10,file=input,status='old')
 	read(10,'(A)') filetype
@@ -83,7 +84,7 @@
 	allocate(dummyarray(norb-1))
 	allocate(tot(Nkpt,Nbands))
 	allocate(OrbChar(Nkpt,Nbands,norb))
-	allocate(kdist(Nkpt))
+	allocate(kdist(Nkpt,4))
 	allocate(eval(Nkpt,Nbands))
 	allocate(iband_sort(Nkpt,Nbands))
 	dist = 0.0000000000d0
@@ -99,7 +100,11 @@
 	! write(*,*) "Compute dist"
 	 end if
 	!write(*,*) dist, kpt
-	 kdist(ikpt) = dist 
+	 kdist(ikpt,1) = dist
+	 do i =1,3
+	  kdist(ikpt,i+1) = k_car(i)
+	 end do
+	!write(*,*) (kdist(ikpt,i),i=1,4)
 	 read(10,*)
 	 do iband=1,Nbands
 	  read(10,*) txt, dummy, txt, txt, eval(ikpt,iband)
@@ -161,12 +166,22 @@
 	
 	! Write header
 	open(unit=200,file=output)
-	if (LSORBIT ==.TRUE.) then
-	 write(fs,'(A11,i2,A4)') '(A3,A9,A10,',norb+5,'A7)'
-	 write(200,fs)'i','kdist','eval','mx','my','mz',(trim(header(iorb)),iorb=1,norb-1),'tot','Abs'
+	if (RECVEC ==.TRUE.) then
+	 write(k_string,'(A4)') '4A11'
+	 write(k_float,'(A6)') '4f10.6'
+	 len_k = 4
 	else
-	 write(fs,'(A11,i2,A4)') '(A3,A9,A10,',norb+2,'A7)'
-	 write(200,fs) 'i', 'kdist', 'eval',(trim(header(iorb)),iorb=1,norb-1), 'tot','Abs'
+	 write(k_string,'(A4)') '1A11'
+	 write(k_float,'(A6)') '1f10.6'
+	 len_k = 1
+	end if
+	
+	if (LSORBIT ==.TRUE.) then
+	 write(fs,'(A4,A4,A6,i2,A4)') '(A3,',k_string,',A10,',norb+5,'A7)'
+	 write(200,fs)'i',(trim(header_k(i)),i=1,len_k),'eval','mx','my','mz',(trim(header(iorb)),iorb=1,norb-1),'tot','Abs'
+	else
+	 write(fs,'(A4,A4,A6,i2,A4)') '(A3,',k_string,',A10,',norb+2,'A7)'
+	 write(200,fs) 'i', (trim(header_k(i)),i=1,len_k), 'eval',(trim(header(iorb)),iorb=1,norb-1), 'tot','Abs'
 	end if
 	
 	!Write projections
@@ -178,11 +193,11 @@
 	   j = iband
 	  end if
 	  if (LSORBIT ==.TRUE.) then
-	   write(fs,'(A15,i2,A6)') '(i3,f9.5,f10.5,',norb+4,'f7.3)'
-	   write(200,fs) iband, kdist(ikpt), eval(ikpt,j), (m(ikpt,j,i), i=1,3), (OrbChar(ikpt,j,i), i= 1,norb), tot(ikpt,j)
+	   write(fs,'(A4,A6,A7,i2,A6)') '(i3,',k_float,',f10.5,',norb+4,'f7.3)'
+	   write(200,fs) iband, (kdist(ikpt,i),i=1,len_k), eval(ikpt,j), (m(ikpt,j,i), i=1,3), (OrbChar(ikpt,j,i), i= 1,norb), tot(ikpt,j)
 	  else
-	   write(fs,'(A15,i2,A6)') '(i3,f9.5,f10.5,',norb+1,'f7.3)'
-	   write(200,fs) iband, kdist(ikpt), eval(ikpt,j), (OrbChar(ikpt,j,i), i= 1,norb),tot(ikpt,j)
+	   write(fs,'(A4,A6,A7,i2,A6)') '(i3,',k_float,',f10.5,',norb+1,'f7.3)'
+	   write(200,fs) iband, (kdist(ikpt,i),i=1,len_k), eval(ikpt,j), (OrbChar(ikpt,j,i), i= 1,norb),tot(ikpt,j)
 	  end if
 	 end do
 	 write(200,*)
@@ -265,7 +280,7 @@
 	COFACTOR(3,3) = +(A(1,1)*A(2,2)-A(1,2)*A(2,1))
 	
 	AINV = TRANSPOSE(COFACTOR) / DET
-	
+	!AINV = COFACTOR / DET
 	OK_FLAG = .TRUE.
 	
 	RETURN
@@ -273,3 +288,4 @@
 	END SUBROUTINE M33INV
 
 	End Program x_band_PROCAR
+
