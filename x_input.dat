@@ -6,7 +6,9 @@ ORB = d
 INPUT = PROCAR
 OUTPUT = TaAs.dat 
 VASPVERSION = 5.4.4
-RECVEC = .TRUE.
+PRECVEC = .FALSE.      ! Print reciprocal vectors
+FRECVEC = car          ! Coordinate system of rec vec, "car"tesian, "red"uced"
+KFORMAT = .FALSE.      ! If true, free format specifier is used for reading k-points
 
 &ATARRAY
 ATOMARRAY = 1 2 3 4

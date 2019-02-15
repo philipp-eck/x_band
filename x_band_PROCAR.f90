@@ -13,12 +13,12 @@
 	
 
 	character(len=8), allocatable :: header(:), header_k(:)
-	character(len=80) :: TXT, input, filetype, output, vaspversion, orb 
+	character(len=80) :: TXT, input, filetype, output, vaspversion, orb, FRECVEC="car"
 	character(len=40) :: fs, k_string, k_float
 	real*8, allocatable :: SquaredAmplitude(:,:), kdist(:,:), eval(:,:)
 	real*8, allocatable :: OrbArray(:),tot(:,:), m(:,:,:)
 	real*8, allocatable :: OrbChar(:,:,:)
-	logical :: LSORBIT,ok_flag, ISORT, RECVEC
+	logical :: LSORBIT,ok_flag, ISORT, PRECVEC, KFORMAT
 	
 
 	allocate(header(16))
@@ -37,8 +37,9 @@
 	                INPUT, &
 	                OUTPUT, &
 	                ISORT, &         ! Option, switch on eigenvalue sorting for hybrid comps
-	                RECVEC           ! write reciprocal vectors in cartesian coordinates to output
-
+	                PRECVEC, &           ! write reciprocal vectors in cartesian coordinates to output
+	                FRECVEC, &       ! Format of RECVEC "red" or "car"
+                        KFORMAT          !If true, the old reading function without format specifier is used
 	! Read Natoms and allocate AtomArray
 	open(unit=13,file=input, status='old')
 	read(13,*)
@@ -89,10 +90,13 @@
 	allocate(iband_sort(Nkpt,Nbands))
 	dist = 0.0000000000d0
 	do ikpt=1,Nkpt
-	!write(*,'(A,1i6)') 'Reading k-point: ', ikpt
+	 write(*,'(A,1i6)') 'Reading k-point: ', ikpt
 	 read(10,*)
-	!read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
-	 read(10,'(A18,3f11.8)') txt, (kpt(i), i=1,3) 
+	 if (KFORMAT == .TRUE.) then
+	  read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
+	 else 
+	  read(10,'(A18,3f11.8)') txt, (kpt(i), i=1,3)
+	 end if
 	!write(*,*) kpt(:)
 	 k_car=matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
@@ -101,14 +105,22 @@
 	 end if
 	!write(*,*) dist, kpt
 	 kdist(ikpt,1) = dist
-	 do i =1,3
-	  kdist(ikpt,i+1) = k_car(i)
-	 end do
+	 if (FRECVEC == "car") then
+	  do i =1,3
+	   kdist(ikpt,i+1) = k_car(i)
+	  end do
+	 else if (FRECVEC == "red") then
+	  do i =1,3
+	   kdist(ikpt,i+1) = kpt(i)
+	  end do
+	 else
+	  write(*,*) "Unknown FRECVEC"
+	 end if
 	!write(*,*) (kdist(ikpt,i),i=1,4)
 	 read(10,*)
 	 do iband=1,Nbands
 	  read(10,*) txt, dummy, txt, txt, eval(ikpt,iband)
-	 !write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
+	  write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
 	  read(10,*)
 	  read(10,*)
 	  do iatom=1,Natoms
@@ -130,9 +142,6 @@
 	     read(10,*)
 	    end do
  	    read(10,*) txt, (dummyarray(iorb), iorb=1,norb-1), m(ikpt,iband,l)
-	    if (vaspversion =='5.4.1') then
-	     read(10,*)
-	    end if
 	   end do
 	  end if
 	  if (filetype =='PROCAR lm decomposed + phase') then
@@ -150,7 +159,9 @@
 	 k_car_prev(1) = k_car(1)
 	 k_car_prev(2) = k_car(2)
 	 k_car_prev(3) = k_car(3)
-	 read(10,*)
+	 if (vaspversion == '5.4.1') then
+	  read(10,*) 
+	 end if
 	end do
 	close(10)
 	
@@ -163,21 +174,21 @@
 	
 	! Write header
 	open(unit=200,file=output)
-	if (RECVEC ==.TRUE.) then
-	 write(k_string,'(A4)') '4A11'
+	if (PRECVEC ==.TRUE.) then
+	 write(k_string,'(A4)') '4A10'
 	 write(k_float,'(A6)') '4f10.6'
 	 len_k = 4
 	else
-	 write(k_string,'(A4)') '1A11'
+	 write(k_string,'(A4)') '1A10'
 	 write(k_float,'(A6)') '1f10.6'
 	 len_k = 1
 	end if
 	
 	if (LSORBIT ==.TRUE.) then
-	 write(fs,'(A4,A4,A6,i2,A4)') '(A3,',k_string,',A10,',norb+5,'A7)'
+	 write(fs,'(A4,A4,A6,i2,A4)') '(A3,',k_string,',A10,',norb+5,'A9)'
 	 write(200,fs)'i',(trim(header_k(i)),i=1,len_k),'eval','mx','my','mz',(trim(header(iorb)),iorb=1,norb-1),'tot','Abs'
 	else
-	 write(fs,'(A4,A4,A6,i2,A4)') '(A3,',k_string,',A10,',norb+2,'A7)'
+	 write(fs,'(A4,A4,A6,i2,A4)') '(A3,',k_string,',A10,',norb+2,'A9)'
 	 write(200,fs) 'i', (trim(header_k(i)),i=1,len_k), 'eval',(trim(header(iorb)),iorb=1,norb-1), 'tot','Abs'
 	end if
 	
@@ -190,10 +201,10 @@
 	   j = iband
 	  end if
 	  if (LSORBIT ==.TRUE.) then
-	   write(fs,'(A4,A6,A7,i2,A6)') '(i3,',k_float,',f10.5,',norb+4,'f7.3)'
+	   write(fs,'(A4,A6,A7,i2,A6)') '(i3,',k_float,',f10.5,',norb+4,'f9.3)'
 	   write(200,fs) iband, (kdist(ikpt,i),i=1,len_k), eval(ikpt,j), (m(ikpt,j,i), i=1,3), (OrbChar(ikpt,j,i), i= 1,norb), tot(ikpt,j)
 	  else
-	   write(fs,'(A4,A6,A7,i2,A6)') '(i3,',k_float,',f10.5,',norb+1,'f7.3)'
+	   write(fs,'(A4,A6,A7,i2,A6)') '(i3,',k_float,',f10.5,',norb+1,'f9.3)'
 	   write(200,fs) iband, (kdist(ikpt,i),i=1,len_k), eval(ikpt,j), (OrbChar(ikpt,j,i), i= 1,norb),tot(ikpt,j)
 	  end if
 	 end do
