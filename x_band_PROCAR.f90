@@ -94,14 +94,14 @@
 	 read(10,*)
 	 if (KFORMAT == .TRUE.) then
 	  read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
-	 else
+	 else if (KFORMAT == .FALSE.) then
 	  if (vaspversion == '5.4.1') then
 	   read(10,'(A18,3f11.8)') txt, (kpt(i), i=1,3)
 	  else if (vaspversion == '5.4.4') then
 	   read(10,'(A19,3f11.8)') txt, (kpt(i), i=1,3)
 	  end if
 	 end if
-	!write(*,*) kpt(:)
+	 write(*,*) kpt(:)
 	 k_car=matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
 	  dist = dist + sqrt( (k_car(1)-k_car_prev(1))**2 + (k_car(2)-k_car_prev(2))**2 + (k_car(3)-k_car_prev(3))**2 )
@@ -120,11 +120,11 @@
 	 else
 	  write(*,*) "Unknown FRECVEC"
 	 end if
-	!write(*,*) (kdist(ikpt,i),i=1,4)
+	 write(*,*) (kdist(ikpt,i),i=1,4)
 	 read(10,*)
 	 do iband=1,Nbands
 	  read(10,*) txt, dummy, txt, txt, eval(ikpt,iband)
-	! write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
+	  write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
 	  read(10,*)
 	  read(10,*)
 	  do iatom=1,Natoms
@@ -152,7 +152,7 @@
 	   if (vaspversion =='5.4.1') then
 	    count_max = 2*Natoms+1
 	   else if (vaspversion == '5.4.4') then
-	    count_max = Natoms+2
+	    count_max = Natoms+1
 	   end if
  	   do iatom=1,count_max 
 	    read(10,*)
@@ -163,9 +163,9 @@
 	 k_car_prev(1) = k_car(1)
 	 k_car_prev(2) = k_car(2)
 	 k_car_prev(3) = k_car(3)
-	 if (vaspversion == '5.4.1') then
-	  read(10,*) 
-	 end if
+	
+	 read(10,*) 
+	
 	end do
 	close(10)
 	
