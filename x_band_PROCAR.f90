@@ -18,7 +18,7 @@
 	real*8, allocatable :: SquaredAmplitude(:,:), kdist(:,:), eval(:,:)
 	real*8, allocatable :: OrbArray(:),tot(:,:), m(:,:,:)
 	real*8, allocatable :: OrbChar(:,:,:)
-	logical :: LSORBIT,ok_flag, ISORT, PRECVEC, KFORMAT
+	logical :: LSORBIT,ok_flag, ISORT, PRECVEC, KFORMAT=.FALSE.
 	
 
 	allocate(header(16))
@@ -124,7 +124,7 @@
 	 read(10,*)
 	 do iband=1,Nbands
 	  read(10,*) txt, dummy, txt, txt, eval(ikpt,iband)
-	  write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
+	! write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
 	  read(10,*)
 	  read(10,*)
 	  do iatom=1,Natoms
@@ -164,7 +164,7 @@
 	 k_car_prev(2) = k_car(2)
 	 k_car_prev(3) = k_car(3)
 	
-	 read(10,*) 
+ 	   read(10,*) 
 	
 	end do
 	close(10)
