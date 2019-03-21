@@ -107,7 +107,7 @@
 	  dist = dist + sqrt( (k_car(1)-k_car_prev(1))**2 + (k_car(2)-k_car_prev(2))**2 + (k_car(3)-k_car_prev(3))**2 )
 	! write(*,*) "Compute dist"
 	 end if
-	!write(*,*) dist, kpt
+	 write(*,*) dist, kpt
 	 kdist(ikpt,1) = dist
 	 if (FRECVEC == "car") then
 	  do i =1,3
@@ -124,7 +124,7 @@
 	 read(10,*)
 	 do iband=1,Nbands
 	  read(10,*) txt, dummy, txt, txt, eval(ikpt,iband)
-	! write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
+	  write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
 	  read(10,*)
 	  read(10,*)
 	  do iatom=1,Natoms
@@ -140,12 +140,20 @@
 	   OrbChar(ikpt,iband,i) = Chari
 	  end do
 	  read(10,*) txt, (dummyarray(iorb), iorb=1,norb-1), tot(ikpt,iband)
+	  ! f-electron PROCAR contains line separated orb/spin block
+	  if (norb == 17) then
+	   read(10,*)
+	  end if
 	  if (LSORBIT ==.TRUE.) then
 	   do l=1,3
 	    do iatom=1,Natoms
 	     read(10,*)
 	    end do
  	    read(10,*) txt, (dummyarray(iorb), iorb=1,norb-1), m(ikpt,iband,l)
+	    ! f-electron PROCAR contains line separated orb/spin block
+	    if (norb == 17) then
+	     read(10,*)
+	    end if
 	   end do
 	  end if
 	  if (filetype =='PROCAR lm decomposed + phase') then
