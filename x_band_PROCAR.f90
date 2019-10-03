@@ -1,5 +1,5 @@
 	Program x_band_PROCAR 
-	! Program is written to extract the orbital character from the PROCAR file, writes the output band ordered. K values in inv Ang
+	! Program is written to extract the orbital character from the PROCAR file, writes the output band ordered. K values in A/2pi
 	! compile with ifort -free -heap-arrays 1 -o extract_char_band.x extract_char_band.f
 	Implicit None
 
@@ -10,7 +10,7 @@
 	integer*8, allocatable :: AtomArray(:), dummyarray(:)
 	real*8 :: dummy, SurfChar, Chari, rec_vec(3,3), k_car(3), k_car_prev(3), scal, real_vec(3,3)
 	real*8 :: dist, kpt(3)
-	real*8,  parameter :: PI_8  = 4 * atan (1.0_8)
+	
 
 	character(len=8), allocatable :: header(:), header_k(:)
 	character(len=80) :: TXT, input, filetype, output, vaspversion, orb, FRECVEC="car"
@@ -90,7 +90,7 @@
 	allocate(iband_sort(Nkpt,Nbands))
 	dist = 0.0000000000d0
 	do ikpt=1,Nkpt
-	!write(*,'(A,1i6)') 'Reading k-point: ', ikpt
+	 write(*,'(A,1i6)') 'Reading k-point: ', ikpt
 	 read(10,*)
 	 if (KFORMAT == .TRUE.) then
 	  read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
@@ -101,10 +101,10 @@
 	   read(10,'(A19,3f11.8)') txt, (kpt(i), i=1,3)
 	  end if
 	 end if
-	!write(*,*) kpt(:)
+	 write(*,*) kpt(:)
 	 k_car=matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
-	  dist = dist + 2 * PI_8 * sqrt( (k_car(1)-k_car_prev(1))**2 + (k_car(2)-k_car_prev(2))**2 + (k_car(3)-k_car_prev(3))**2 )
+	  dist = dist + sqrt( (k_car(1)-k_car_prev(1))**2 + (k_car(2)-k_car_prev(2))**2 + (k_car(3)-k_car_prev(3))**2 )
 	! write(*,*) "Compute dist"
 	 end if
 	!write(*,*) dist, kpt
@@ -124,7 +124,7 @@
 	 read(10,*)
 	 do iband=1,Nbands
 	  read(10,*) txt, dummy, txt, txt, eval(ikpt,iband)
-	! write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
+	  write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
 	  read(10,*)
 	  read(10,*)
 	  do iatom=1,Natoms
@@ -160,7 +160,10 @@
 	   if (vaspversion =='5.4.1') then
 	    count_max = 2*Natoms+1
 	   else if (vaspversion == '5.4.4') then
-	    count_max = Natoms+1
+	    count_max = Natoms+3
+	      if (iband==Nbands) then
+	        count_max = Natoms+2
+	      end if
 	   end if
  	   do iatom=1,count_max 
 	    read(10,*)
