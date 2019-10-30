@@ -43,7 +43,7 @@
 	
 	! Set k-scaling factor
 	if (K2PI1 == .FALSE.) then
-	 PI_8  = 4 * atan (1.0_8)
+	 PI_8  = 8 * atan (1.0_8)
 	else
 	 PI_8  = 1
 	end if
@@ -110,7 +110,7 @@
 	  end if
 	 end if
 	!write(*,*) kpt(:)
-	 k_car=matmul(rec_vec,kpt(:))
+	 k_car= PI_8*matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
 	  dist = dist + sqrt( (k_car(1)-k_car_prev(1))**2 + (k_car(2)-k_car_prev(2))**2 + (k_car(3)-k_car_prev(3))**2 )
 	! write(*,*) "Compute dist"
