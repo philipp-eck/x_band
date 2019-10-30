@@ -1,15 +1,14 @@
 	Program x_band_PROCAR 
-	! Program is written to extract the orbital character from the PROCAR file, writes the output band ordered. K values in A/2pi
-	! compile with ifort -free -heap-arrays 1 -o extract_char_band.x extract_char_band.f
+	! Program is written to extract the orbital character from the PROCAR file, writes the output band ordered.
 	Implicit None
 
 	integer*8 :: ikpt, i, j, n, ispin, norb, iorb, iband, bandi, iatom, nat, l
-	integer*8 :: Nbands, Nkpt, count_max, len_k
+	integer*8 :: Nbands, Nkpt, count_max, len_k, k_start
 	integer*8 :: Natoms
 	integer*8, allocatable :: iband_sort(:,:)
 	integer*8, allocatable :: AtomArray(:), dummyarray(:)
 	real*8 :: dummy, SurfChar, Chari, rec_vec(3,3), k_car(3), k_car_prev(3), scal, real_vec(3,3)
-	real*8 :: dist, kpt(3)
+	real*8 :: dist, kpt(3), PI_8
 	
 
 	character(len=8), allocatable :: header(:), header_k(:)
@@ -18,7 +17,7 @@
 	real*8, allocatable :: SquaredAmplitude(:,:), kdist(:,:), eval(:,:)
 	real*8, allocatable :: OrbArray(:),tot(:,:), m(:,:,:)
 	real*8, allocatable :: OrbChar(:,:,:)
-	logical :: LSORBIT,ok_flag, ISORT, PRECVEC, KFORMAT=.FALSE.
+	logical :: LSORBIT,ok_flag, ISORT, PRECVEC, KFORMAT=.FALSE., K2PI1=.TRUE.
 	
 
 	allocate(header(16))
@@ -39,7 +38,16 @@
 	                ISORT, &         ! Option, switch on eigenvalue sorting for hybrid comps
 	                PRECVEC, &           ! write reciprocal vectors in cartesian coordinates to output
 	                FRECVEC, &       ! Format of RECVEC "red" or "car"
-                        KFORMAT          !If true, the old reading function without format specifier is used
+                        KFORMAT, &       !If true, the old reading function without format specifier is used
+	                K2PI1            !If true, 2pi = 1 k-scaling is applied
+	
+	! Set k-scaling factor
+	if (K2PI1 == .FALSE.) then
+	 PI_8  = 4 * atan (1.0_8)
+	else
+	 PI_8  = 1
+	end if
+	
 	! Read Natoms and allocate AtomArray
 	open(unit=13,file=input, status='old')
 	read(13,*)
@@ -90,7 +98,7 @@
 	allocate(iband_sort(Nkpt,Nbands))
 	dist = 0.0000000000d0
 	do ikpt=1,Nkpt
-	 write(*,'(A,1i6)') 'Reading k-point: ', ikpt
+	!write(*,'(A,1i6)') 'Reading k-point: ', ikpt
 	 read(10,*)
 	 if (KFORMAT == .TRUE.) then
 	  read(10,*) txt, dummy, txt, (kpt(i), i=1,3)
@@ -101,7 +109,7 @@
 	   read(10,'(A19,3f11.8)') txt, (kpt(i), i=1,3)
 	  end if
 	 end if
-	 write(*,*) kpt(:)
+	!write(*,*) kpt(:)
 	 k_car=matmul(rec_vec,kpt(:))
 	 if ( ikpt > 1) then
 	  dist = dist + sqrt( (k_car(1)-k_car_prev(1))**2 + (k_car(2)-k_car_prev(2))**2 + (k_car(3)-k_car_prev(3))**2 )
@@ -124,7 +132,7 @@
 	 read(10,*)
 	 do iband=1,Nbands
 	  read(10,*) txt, dummy, txt, txt, eval(ikpt,iband)
-	  write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
+	 !write(*,*) 'band', iband, 'eval',  eval(ikpt,iband)
 	  read(10,*)
 	  read(10,*)
 	  do iatom=1,Natoms
@@ -139,16 +147,24 @@
 	   end do
 	   OrbChar(ikpt,iband,i) = Chari
 	  end do
-	  read(10,*) txt, (dummyarray(iorb), iorb=1,norb-1), tot(ikpt,iband)
+	  ! PROCAR for one atom unit cell doesn't contain tot line
+	  if (Natoms == 1) then
+	   tot(ikpt,iband) = SquaredAmplitude(1,norb)
+	  else
+	   read(10,*) txt, (dummyarray(iorb), iorb=1,norb-1), tot(ikpt,iband)
+	  end if
 	  ! f-electron PROCAR contains line separated orb/spin block
 	  if (norb == 17) then
 	   read(10,*)
 	  end if
 	  if (LSORBIT ==.TRUE.) then
 	   do l=1,3
-	    do iatom=1,Natoms
+	    do iatom=1,Natoms-1
 	     read(10,*)
 	    end do
+	    if (Natoms >1) then
+	     read(10,*)
+	    end if
  	    read(10,*) txt, (dummyarray(iorb), iorb=1,norb-1), m(ikpt,iband,l)
 	    ! f-electron PROCAR contains line separated orb/spin block
 	    if (norb == 17) then
@@ -190,21 +206,23 @@
 	! Write header
 	open(unit=200,file=output)
 	if (PRECVEC ==.TRUE.) then
-	 write(k_string,'(A4)') '4A10'
-	 write(k_float,'(A6)') '4f10.6'
+	 write(k_string,'(A4)') '3A10'
+	 write(k_float,'(A6)') '3f10.6'
 	 len_k = 4
+	 k_start= 2 
 	else
 	 write(k_string,'(A4)') '1A10'
 	 write(k_float,'(A6)') '1f10.6'
 	 len_k = 1
+	 k_start = 1
 	end if
 	
 	if (LSORBIT ==.TRUE.) then
 	 write(fs,'(A4,A4,A6,i2,A4)') '(A3,',k_string,',A10,',norb+5,'A9)'
-	 write(200,fs)'i',(trim(header_k(i)),i=1,len_k),'eval','mx','my','mz',(trim(header(iorb)),iorb=1,norb-1),'tot','Abs'
+	 write(200,fs)'i',(trim(header_k(i)),i=k_start,len_k),'eval','mx','my','mz',(trim(header(iorb)),iorb=1,norb-1),'tot','Abs'
 	else
 	 write(fs,'(A4,A4,A6,i2,A4)') '(A3,',k_string,',A10,',norb+2,'A9)'
-	 write(200,fs) 'i', (trim(header_k(i)),i=1,len_k), 'eval',(trim(header(iorb)),iorb=1,norb-1), 'tot','Abs'
+	 write(200,fs) 'i', (trim(header_k(i)),i=k_start,len_k), 'eval',(trim(header(iorb)),iorb=1,norb-1), 'tot','Abs'
 	end if
 	
 	!Write projections
@@ -217,10 +235,10 @@
 	  end if
 	  if (LSORBIT ==.TRUE.) then
 	   write(fs,'(A4,A6,A7,i2,A6)') '(i3,',k_float,',f10.5,',norb+4,'f9.3)'
-	   write(200,fs) iband, (kdist(ikpt,i),i=1,len_k), eval(ikpt,j), (m(ikpt,j,i), i=1,3), (OrbChar(ikpt,j,i), i= 1,norb), tot(ikpt,j)
+	   write(200,fs) iband, (kdist(ikpt,i),i=k_start,len_k), eval(ikpt,j), (m(ikpt,j,i), i=1,3), (OrbChar(ikpt,j,i), i= 1,norb), tot(ikpt,j)
 	  else
 	   write(fs,'(A4,A6,A7,i2,A6)') '(i3,',k_float,',f10.5,',norb+1,'f9.3)'
-	   write(200,fs) iband, (kdist(ikpt,i),i=1,len_k), eval(ikpt,j), (OrbChar(ikpt,j,i), i= 1,norb),tot(ikpt,j)
+	   write(200,fs) iband, (kdist(ikpt,i),i=k_start,len_k), eval(ikpt,j), (OrbChar(ikpt,j,i), i= 1,norb),tot(ikpt,j)
 	  end if
 	 end do
 	 write(200,*)
