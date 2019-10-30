@@ -9,6 +9,7 @@ VASPVERSION = 5.4.4
 PRECVEC = .FALSE.      ! Print reciprocal vectors
 FRECVEC = car          ! Coordinate system of rec vec, "car"tesian, "red"uced"
 KFORMAT = .FALSE.      ! If true, free format specifier is used for reading k-points
+K2PI1   = .FALSE.      !If true, 2pi = 1 k-scaling is applied, default = .TRUE. (old convention)
 
 &ATARRAY
 ATOMARRAY = 1 2 3 4
